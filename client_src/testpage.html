@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
-		<title>Log in</title>
+		<title>Client webpage</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<link
 			rel="stylesheet"
@@ -12,8 +12,17 @@
 			href="index.css"
 		/>
 		<script src="https://code.JQuery.com/JQuery-3.4.1.min.js"></script>
+		
 	</head>
 	<body>
+		<h1>This is the webpage!</h1>
+		<button id="reconnect">Reconnect</button>
+		<button id="disconnect">Disconnect</button>
+		<div id="data"><h2 id="connectionstat"></h2></div>
+		<form id="messagefrm">
+			<input type="text" name="message" id="message" />
+			<button id="send">Send</button>
+		</form>
 	</body>
 	<script src="index.js"></script>
 </html>

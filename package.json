@@ -1,7 +1,14 @@
 {
   "dependencies": {
+    "dotenv": "^16.0.0",
     "events": "^3.3.0",
+    "jquery": "^3.6.0",
     "prompt-sync": "^4.2.0",
-    "ws": "^8.6.0"
+    "request": "^2.88.2",
+    "ws": "^8.6.0",
+    "xmlhttprequest": "^1.8.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.14.0"
   }
 }

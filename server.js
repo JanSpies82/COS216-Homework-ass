@@ -3,8 +3,9 @@
 const http = require('http');
 const fs = require('fs');
 const WebSocket = require('ws');
-const events = require("events");
-const clientFiles = ['/index.css', '/index.html', '/', '/index.js', '/favicon.ico'];
+const request = require('request');
+require('dotenv').config();
+const clientFiles = ['/index.css', '/index.html', '/', '/index.js', '/favicon.ico', '/SiteLogo.svg', '/SiteLogo.png', '/testpage.html'];
 const clients = new Set();
 
 // const prompt = require("prompt-sync")({ sigint: true });
@@ -19,7 +20,10 @@ const server = http.createServer(function (req, res) {
         if (clientFiles.includes(req.url)) //Valid file requests
         {
             var f = getFile(req.url);
-            res.writeHead(200, { 'Access-Control-Allow-Origin': '*' });
+            if ((req.url).toString().includes('svg'))
+                res.writeHead(200, { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'image/svg+xml' });
+            else
+                res.writeHead(200, { 'Access-Control-Allow-Origin': '*' });
             res.write(f);
             res.end();
         }
@@ -30,10 +34,55 @@ const server = http.createServer(function (req, res) {
         //     res.end();
         //     return;
         // }
+    } else {//post request to log in 
+        console.log('received post request');
+        var reqdata = '';
+        req.on("data", function (d) {
+            reqdata += d;
+        });
+        req.on("end", function () {
+            var pars = getParams(reqdata);
+            pars.return = [''];
+            const options = {
+                url: process.env.WURL,
+                json: true,
+                body: pars,
+                auth: {
+                    user: process.env.WUSERNAME,
+                    pass: process.env.WPASSWORD,
+                    sendImmediately: false
+                }
+            };
+
+            request.post(options, (err, resp, body) => {
+                if (err) {
+                    return console.log(err);
+                }
+                if (body['status'] != 'success') {
+                    return console.log("Login request failed: " + body['data'][0]['message']);
+                }
+                console.log('User ' + body['data'][0]['username'] + ' has logged in successfully');
+                var f = getFile('/testpage.html');
+                res.writeHead(200, { 'Access-Control-Allow-Origin': '*', "Content-Type":'text/html'});
+                res.write(f);
+                res.end();
+
+            });
+
+
+
+
+
+
+
+        });
     }
 
 }).listen(PORT);
 console.log("Listening on " + PORT);
+server.on('error', (e) => {
+    console.log('server error ' + e.stack);
+})
 
 const wss = new WebSocket.Server({ noServer: true });
 server.on('upgrade', function (request, socket, head) {
@@ -45,6 +94,7 @@ wss.on('connection', ws => {
     ws.id = "User" + (clients.size + 1);
     clients.add(ws);
     console.log(ws.id + ' is connected to socket');
+
     ws.on('message', function incoming(data) {
         console.log('Message received: ' + data);
         for (let c of clients)
@@ -55,6 +105,8 @@ wss.on('connection', ws => {
         console.log(ws.id + ' has disconnected');
         clients.delete(ws);
     });
+
+
 });
 
 
@@ -71,12 +123,23 @@ function getFile(name) {
         const pstr = /PORT\s=\s\d{4}/;
         var newValue = oldf.toString().replace(pstr, "PORT = " + PORT);
         fs.writeFileSync('client_src/index.js', newValue)
-        console.log('Edited client js file');
+        // console.log('Edited client js file');
         return fs.readFileSync('client_src/.' + name);
     } else if (clientFiles.includes(name)) {
         return fs.readFileSync('client_src/.' + name);
     }
 
+}
+
+function getParams(string) {
+    var pars = string.split('&');
+    var res = {};
+    for (var i = 0; i < pars.length; i++) {
+        var p = pars[i].split('=');
+        res[p[0]] = p[1];
+    }
+
+    return res;
 }
 
 process.stdin.addListener('data', data => {
