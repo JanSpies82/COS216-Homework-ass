@@ -21,27 +21,33 @@ function login() {
     let jsonreq = Object.fromEntries(fdata.entries());
     jsonreq.type = 'login';
     $.post(
-        'http://localhost:' + PORT +'/',
+        'http://localhost:' + PORT + '/',
         jsonreq,
-        function(data, status){
+        function (data, status) {
             console.log('status: ' + status);
-            // alert('data: ' + data);   
+            // alert('data: ' + data);
+            sessionStorage.setItem('username', data['username']);
+            sessionStorage.setItem('key', data['key']);
+            setMainWindow();
         }
     );
 }
 
+function setMainWindow() {
+    $('#centered_div').empty();
+    $('#centered_div').append($('<button id="reconnect">').text("Reconnect"), $('<button id="disconnect">').text("Disconnect"));
+    $('#centered_div').append($('<h2 id="connectionstat">'));
+    $('#centered_div').append($('<div id="data">'));
+    $('#centered_div').append($('<form id="messagefrm">').append('<input type="text" name="message" id="message" /><button id="send">Send</button>'));
+    reconnect();
+}
 
 const PORT = 8321;
 // var socket = new WebSocket('ws://localhost:' + PORT);
 var socket;
-// $("body").on("ready", function (e) {
-//     reconnect();
-//     console.log("First connection")
-// });
-// reconnect();
-// console.log("first connect");
+
 function reconnect() {
-    $("#connectionstat").text("Attempting to reconnect");
+    $('#connectionstat').text("Attempting to reconnect");
     try {
         socket.close();
     } catch (e) { }
@@ -50,6 +56,24 @@ function reconnect() {
     socket.onopen = socOpen;
     socket.onmessage = socMessage;
     socket.onclose = socClose;
+    $("#send").on('click', function (e) {
+        e.preventDefault;
+        console.log("sending");
+        var text = $("#message").val();
+        if (text.length == 0)
+            return
+        socket.send(text);
+        $("#data").append("Sending " + text + " <br/>");
+
+    });
+    $("#disconnect").on('click', function (e) {
+        e.preventDefault;
+        socket.close();
+    });
+    $("#reconnect").on('click', function (e) {
+        e.preventDefault;
+        reconnect();
+    });
 }
 
 function socOpen(ev) {
@@ -73,25 +97,6 @@ function socClose(ev) {
     $("#reconnect").attr("disabled", false);
     $("#connectionstat").text("Disconnected");
 }
-
-$("#send").on('click', function (e) {
-    e.preventDefault;
-    console.log("sending");
-    var text = $("#message").val();
-    if (text.length == 0)
-        return
-    socket.send(text);
-    $("#data").append("Sending " + text + " <br/>");
-
-});
-$("#disconnect").on('click', function (e) {
-    e.preventDefault;
-    socket.close();
-});
-$("#reconnect").on('click', function (e) {
-    e.preventDefault;
-    reconnect();
-});
 
 // socket.onopen = function () {
 //     $("#diconnect").attr("disabled", true);

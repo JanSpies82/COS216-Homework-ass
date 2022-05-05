@@ -13,6 +13,7 @@ const clients = new Set();
 const PORT = 8321;
 
 console.log('Starting Server on ' + PORT);
+var lastuname = 'def';
 
 const server = http.createServer(function (req, res) {
     if (req.method == 'GET') //File request
@@ -62,9 +63,15 @@ const server = http.createServer(function (req, res) {
                     return console.log("Login request failed: " + body['data'][0]['message']);
                 }
                 console.log('User ' + body['data'][0]['username'] + ' has logged in successfully');
-                var f = getFile('/testpage.html');
-                res.writeHead(200, { 'Access-Control-Allow-Origin': '*', "Content-Type":'text/html'});
-                res.write(f);
+
+                r = {
+                    'status': 'success',
+                    'username': body['data'][0]['username'],
+                    'key': body['data'][0]['api_key']
+                }
+                lastuname = body['data'][0]['username'];
+                res.writeHead(200, { 'Access-Control-Allow-Origin': '*', "Content-Type": 'application/json' });
+                res.write(JSON.stringify(r));
                 res.end();
 
             });
@@ -91,7 +98,7 @@ server.on('upgrade', function (request, socket, head) {
     })
 })
 wss.on('connection', ws => {
-    ws.id = "User" + (clients.size + 1);
+    ws.id = lastuname;
     clients.add(ws);
     console.log(ws.id + ' is connected to socket');
 
