@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 // Janco Spies u21434159
 
 const http = require('http');
@@ -38,10 +39,10 @@ const server = http.createServer(function (req, res) {
     } else {//post request to log in 
         console.log('received post request');
         var reqdata = '';
-        req.on("data", function (d) {
+        req.on('data', function (d) {
             reqdata += d;
         });
-        req.on("end", function () {
+        req.on('end', function () {
             var pars = getParams(reqdata);
             pars.return = [''];
             const options = {
@@ -60,17 +61,17 @@ const server = http.createServer(function (req, res) {
                     return console.log(err);
                 }
                 if (body['status'] != 'success') {
-                    return console.log("Login request failed: " + body['data'][0]['message']);
+                    return console.log('Login request failed: ' + body['data'][0]['message']);
                 }
                 console.log('User ' + body['data'][0]['username'] + ' has logged in successfully');
 
-                r = {
+                var r = {
                     'status': 'success',
                     'username': body['data'][0]['username'],
                     'key': body['data'][0]['api_key']
-                }
+                };
                 lastuname = body['data'][0]['username'];
-                res.writeHead(200, { 'Access-Control-Allow-Origin': '*', "Content-Type": 'application/json' });
+                res.writeHead(200, { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' });
                 res.write(JSON.stringify(r));
                 res.end();
 
@@ -86,26 +87,40 @@ const server = http.createServer(function (req, res) {
     }
 
 }).listen(PORT);
-console.log("Listening on " + PORT);
+console.log('Listening on ' + PORT);
 server.on('error', (e) => {
     console.log('server error ' + e.stack);
-})
+});
 
 const wss = new WebSocket.Server({ noServer: true });
 server.on('upgrade', function (request, socket, head) {
     wss.handleUpgrade(request, socket, head, function (ws) {
         wss.emit('connection', ws, request);
-    })
-})
+    });
+});
 wss.on('connection', ws => {
     ws.id = lastuname;
     clients.add(ws);
     console.log(ws.id + ' is connected to socket');
 
     ws.on('message', function incoming(data) {
-        console.log('Message received: ' + data);
-        for (let c of clients)
-            c.send("Message of " + data.toString().trim() + " from " + ws.id + " acknowledged by server");
+        var jData = JSON.parse(data);
+        if (jData['action'] == 'establish') {
+            for (let c of clients)
+                if (c.id === ws.id)
+                    c.key = jData['key'];
+            console.log(ws.id + ' has established the connection and their key is set to ' + jData['key']);
+        }
+        if ('message' in jData) {
+            console.log('Message received: ' + jData['message']);
+            for (let c of clients) {
+                var repObj = {
+                    'status': 'success',
+                    'message': 'Message of ' + jData['message'] + ' from ' + ws.id + ' acknowledged by server'
+                };
+                c.send(JSON.stringify(repObj));
+            }
+        }
     });
 
     ws.on('close', function incoming(data) {
@@ -125,11 +140,11 @@ function getFile(name) {
     if (name == '/') {
         return fs.readFileSync('client_src/index.html');
     }
-    if (name == "/index.js") {//Edit js file to account for dynamic port
+    if (name == '/index.js') {//Edit js file to account for dynamic port
         var oldf = fs.readFileSync('client_src/index.js');
         const pstr = /PORT\s=\s\d{4}/;
-        var newValue = oldf.toString().replace(pstr, "PORT = " + PORT);
-        fs.writeFileSync('client_src/index.js', newValue)
+        var newValue = oldf.toString().replace(pstr, 'PORT = ' + PORT);
+        fs.writeFileSync('client_src/index.js', newValue);
         // console.log('Edited client js file');
         return fs.readFileSync('client_src/.' + name);
     } else if (clientFiles.includes(name)) {
@@ -150,21 +165,21 @@ function getParams(string) {
 }
 
 process.stdin.addListener('data', data => {
-    strdata = data.toString();
+    var strdata = data.toString();
     // console.log(strdata.includes("KILL"));
-    if (isEq(strdata, "LIST"))
+    if (isEq(strdata, 'LIST'))
         commandList();
-    else if (isEq(strdata, "QUIT"))
+    else if (isEq(strdata, 'QUIT'))
         commandQuit();
-    else if (strdata.includes("KILL"))
+    else if (strdata.includes('KILL'))
         commandKill(strdata);
     else console.log('Unrecognised command');
-})
+});
 
 function commandList() {
-    console.log("All active connections:")
+    console.log('All active connections:');
     if (clients.size == 0)
-        console.log("none");
+        console.log('none');
     else
         for (let c of clients)
             console.log(c.id);
@@ -172,30 +187,30 @@ function commandList() {
 
 function commandKill(c) {
     if (clients.size == 0) {
-        console.log("There are currently no connected users")
+        console.log('There are currently no connected users');
         return;
     }
-    id = c.replace("KILL ", "").trim();
+    var id = c.replace('KILL ', '').trim();
     for (let c of clients) {
         if (c.id === id) {
-            c.send("You are being disconnected");
+            c.send('You are being disconnected');
             c.close();
             clients.delete(c);
             return;
         }
     }
-    console.log("User not found");
+    console.log('User not found');
 }
 
 function commandQuit() {
     if (clients.size == 0)
         return;
     for (let c of clients) {
-        c.send("This server will be going offline now and thus you will be disconnected");
+        c.send('This server will be going offline now and thus you will be disconnected');
         c.close();
         clients.delete(c);
     }
-    console.log("All users have been disconnected and server will now go offline");
+    console.log('All users have been disconnected and server will now go offline');
     process.exit();
 }
 

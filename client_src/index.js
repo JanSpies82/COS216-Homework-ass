@@ -43,7 +43,6 @@ function setMainWindow() {
 }
 
 const PORT = 8321;
-// var socket = new WebSocket('ws://localhost:' + PORT);
 var socket;
 
 function reconnect() {
@@ -62,7 +61,11 @@ function reconnect() {
         var text = $("#message").val();
         if (text.length == 0)
             return
-        socket.send(text);
+        var messObj = {
+            'message':text
+        }
+        
+        socket.send(JSON.stringify(messObj));
         $("#data").append("Sending " + text + " <br/>");
 
     });
@@ -81,14 +84,18 @@ function socOpen(ev) {
     $("#disconnect").attr("disabled", false);
     $("#reconnect").attr("disabled", false);
     $("#data").append("<br/>");
-    $("#data").append("Sending Hello <br/>");
-    socket.send('hello');
+    var reqEst = {
+        "action":"establish",
+        "key":sessionStorage.getItem('key')
+    }
+    socket.send(JSON.stringify(reqEst));
     $("#connectionstat").text("Connected");
 }
 
 function socMessage(ev) {
     console.log(ev);
-    $("#data").append("Reply: " + ev.data + "<br/><br/>");
+    var response = JSON.parse(ev.data);
+    $("#data").append("Reply: " + response['message'] + "<br/><br/>");
 }
 
 function socClose(ev) {
