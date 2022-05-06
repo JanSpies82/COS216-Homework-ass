@@ -114,6 +114,22 @@ wss.on('connection', ws => {
                 if (c.id === ws.id)
                     c.key = jData['key'];
             console.log(ws.id + ' has established the connection and their key is set to ' + jData['key']);
+        
+        
+        } else if (jData['action'] == 'getArticles') {
+            console.log('Recieved request from ' + ws.id + ' for articles');
+            // var resp = APIGetArticles();
+            // console.log('resp: ' + JSON.stringify(resp));
+            // ws.send(JSON.stringify(resp));
+            APIGetArticles((err, resp)=>{
+                if (err)
+                    console.log('Article request failed ' + err);
+                else {
+                    console.log('api response: ' + resp);
+                    ws.send(JSON.stringify(resp));
+                }
+            });
+        
         }
         if ('message' in jData) {
             console.log('Message received: ' + jData['message']);
@@ -136,32 +152,37 @@ wss.on('connection', ws => {
 });
 
 ////////////////////////////////////////////////////////////////////////* External API communication
-function APIGetArticles() {
+function APIGetArticles(cb) {
     const jsonreq = {
         type: 'info',
         key: process.env.SERVERKEY,
         page: 'today',
         return: ['*'],
-
+    };
+    const options = {
+        url: process.env.WURL,
+        json: true,
+        body: jsonreq,
+        auth: {
+            user: process.env.WUSERNAME,
+            pass: process.env.WPASSWORD,
+            sendImmediately: false
+        }
     };
 
-    $.ajax({
-        url: process.env.LOCALAPI,
-        type: 'POST',
-        data: JSON.stringify(jsonreq),
-        headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Content-Type': 'application/json'
-        },
-        success: function (data) {
-            console.log('getArticle status: ' + data['status']);
-            return data['data'];
-            // console.log(JSON.stringify(data['data'], null, 4));
-        },
-        error: function (xhr, status, error) {
-            console.log('Get articles api request failed');
-            console.log('request:\n' + JSON.stringify(this, null, 4));
-        },
+    request.post(options, (err, resp, body) => {
+        if (err) {
+            console.log(err);
+            cb(false);
+        }
+        if (body['status'] != 'success') {
+            console.log('Failed');
+            return (false);
+        }
+        console.log('Request successfull');
+        console.log(JSON.stringify(body));
+        cb(null, JSON.stringify(body));
+        // console.log(JSON.stringify(body, null, 4));
     });
 }
 
@@ -170,16 +191,18 @@ function APIaddChat(user, article, content, reply) {
         type: 'chat',
         op: 'add',
         key: process.env.SERVERKEY,
-        user: user,
-        article: article,
-        content: content,
-        reply: reply,
+        newMessage: {
+            user: user,
+            article: article,
+            content: content,
+            reply: reply,
+        },
         return: [''],
 
     };
 
     $.ajax({
-        url: process.env.LOCALAPI,
+        url: process.env.WURL,
         type: 'POST',
         data: JSON.stringify(jsonreq),
         headers: {
@@ -209,7 +232,7 @@ function APIgetChat(article) {
     };
 
     $.ajax({
-        url: process.env.LOCALAPI,
+        url: process.env.WURL,
         type: 'POST',
         data: JSON.stringify(jsonreq),
         headers: {
@@ -238,9 +261,9 @@ process.stdin.addListener('data', data => {
     else if (strdata.includes('KILL'))
         commandKill(strdata);
     else {
-        // console.log('Unrecognised command');
-        APIGetArticles();
-        // APIaddChat('user1', 123, 'this is an article', null);
+        console.log('Unrecognised command');
+        // APIGetArticles();
+        // APIaddChat('user1', 278, 'this is an article', null);
         // APIgetChat(123);
     }
 });

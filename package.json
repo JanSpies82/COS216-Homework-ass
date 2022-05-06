@@ -6,6 +6,7 @@
     "jsdom": "^19.0.0",
     "prompt-sync": "^4.2.0",
     "request": "^2.88.2",
+    "sync-request": "^6.1.0",
     "ws": "^8.6.0",
     "xmlhttprequest": "^1.8.0"
   },

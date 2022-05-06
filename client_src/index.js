@@ -1,3 +1,4 @@
+/* eslint-disable no-prototype-builtins */
 /* eslint-disable no-unused-vars */
 /* eslint-disable no-empty */
 /* eslint-disable no-undef */
@@ -36,17 +37,18 @@ function login() {
     );
 }
 
+
+const PORT = 8321;
+var socket;
 function setMainWindow() {
     $('#centered_div').empty();
     $('#centered_div').append($('<button id="reconnect">').text('Reconnect'), $('<button id="disconnect">').text('Disconnect'));
     $('#centered_div').append($('<h2 id="connectionstat">'));
     $('#centered_div').append($('<div id="data">'));
     $('#centered_div').append($('<form id="messagefrm">').append('<input type="text" name="message" id="message" /><button id="send">Send</button>'));
+    $('#centered_div').append($('<button id="getArt">Get articles</button>'));
     reconnect();
 }
-
-const PORT = 8321;
-var socket;
 
 function reconnect() {
     $('#connectionstat').text('Attempting to reconnect');
@@ -65,9 +67,9 @@ function reconnect() {
         if (text.length == 0)
             return;
         var messObj = {
-            'message':text
+            'message': text
         };
-        
+
         socket.send(JSON.stringify(messObj));
         $('#data').append('Sending ' + text + ' <br/>');
 
@@ -80,6 +82,14 @@ function reconnect() {
         e.preventDefault;
         reconnect();
     });
+    $('#getArt').click((e) => {
+        e.preventDefault;
+        console.log('sending article request');
+        const req = {
+            'action': 'getArticles'
+        };
+        socket.send(JSON.stringify(req));
+    });
 }
 
 function socOpen(ev) {
@@ -88,8 +98,8 @@ function socOpen(ev) {
     $('#reconnect').attr('disabled', false);
     $('#data').append('<br/>');
     var reqEst = {
-        'action':'establish',
-        'key':sessionStorage.getItem('key')
+        'action': 'establish',
+        'key': sessionStorage.getItem('key')
     };
     socket.send(JSON.stringify(reqEst));
     $('#connectionstat').text('Connected');
@@ -98,7 +108,11 @@ function socOpen(ev) {
 function socMessage(ev) {
     console.log(ev);
     var response = JSON.parse(ev.data);
-    $('#data').append('Reply: ' + response['message'] + '<br/><br/>');
+    if (!response.hasOwnProperty('message'))
+        console.log(response);
+    // console.log(JSON.stringify(response, null, 4));
+    else
+        $('#data').append('Reply: ' + response['message'] + '<br/><br/>');
 }
 
 function socClose(ev) {
