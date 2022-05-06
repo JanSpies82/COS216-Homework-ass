@@ -8,14 +8,17 @@ const request = require('request');
 require('dotenv').config();
 const clientFiles = ['/index.css', '/index.html', '/', '/index.js', '/favicon.ico', '/SiteLogo.svg', '/SiteLogo.png', '/testpage.html'];
 const clients = new Set();
+const jsdom = require('jsdom');
+const dom = new jsdom.JSDOM('');
+const $ = require('jquery')(dom.window);
 
+////////////////////////////////////////////////////////////////////////* Main server code
 // const prompt = require("prompt-sync")({ sigint: true });
 // const PORT = prompt("Which port should the server use? ");
 const PORT = 8321;
 
 console.log('Starting Server on ' + PORT);
 var lastuname = 'def';
-
 const server = http.createServer(function (req, res) {
     if (req.method == 'GET') //File request
     {
@@ -92,6 +95,7 @@ server.on('error', (e) => {
     console.log('server error ' + e.stack);
 });
 
+////////////////////////////////////////////////////////////////////////* Socket server code
 const wss = new WebSocket.Server({ noServer: true });
 server.on('upgrade', function (request, socket, head) {
     wss.handleUpgrade(request, socket, head, function (ws) {
@@ -131,10 +135,166 @@ wss.on('connection', ws => {
 
 });
 
+////////////////////////////////////////////////////////////////////////* External API communication
+function APIGetArticles() {
+    const jsonreq = {
+        type: 'info',
+        key: process.env.SERVERKEY,
+        page: 'today',
+        return: ['*'],
 
+    };
 
+    $.ajax({
+        url: process.env.LOCALAPI,
+        type: 'POST',
+        data: JSON.stringify(jsonreq),
+        headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Content-Type': 'application/json'
+        },
+        success: function (data) {
+            console.log('getArticle status: ' + data['status']);
+            return data['data'];
+            // console.log(JSON.stringify(data['data'], null, 4));
+        },
+        error: function (xhr, status, error) {
+            console.log('Get articles api request failed');
+            console.log('request:\n' + JSON.stringify(this, null, 4));
+        },
+    });
+}
 
+function APIaddChat(user, article, content, reply) {
+    const jsonreq = {
+        type: 'chat',
+        op: 'add',
+        key: process.env.SERVERKEY,
+        user: user,
+        article: article,
+        content: content,
+        reply: reply,
+        return: [''],
 
+    };
+
+    $.ajax({
+        url: process.env.LOCALAPI,
+        type: 'POST',
+        data: JSON.stringify(jsonreq),
+        headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Content-Type': 'application/json'
+        },
+        success: function (data) {
+            console.log('addChat status: ' + data['status']);
+            // return data['data'];
+            console.log(JSON.stringify(data['data'][0].message, null, 4));
+        },
+        error: function (xhr, status, error) {
+            console.log('Add chat api request failed');
+            console.log('request:\n' + JSON.stringify(this, null, 4));
+        },
+    });
+}
+
+function APIgetChat(article) {
+    const jsonreq = {
+        type: 'chat',
+        op: 'get',
+        key: process.env.SERVERKEY,
+        article: article,
+        return: [''],
+
+    };
+
+    $.ajax({
+        url: process.env.LOCALAPI,
+        type: 'POST',
+        data: JSON.stringify(jsonreq),
+        headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Content-Type': 'application/json'
+        },
+        success: function (data) {
+            console.log('getChat status: ' + data['status']);
+            // return data['data'];
+            console.log(JSON.stringify(data['data'][0].message, null, 4));
+        },
+        error: function (xhr, status, error) {
+            console.log('Get chat api request failed');
+            console.log('request:\n' + JSON.stringify(this, null, 4));
+        },
+    });
+}
+//////////////////////////////////////////////////////////////////////* Internal server commands 
+process.stdin.addListener('data', data => {
+    var strdata = data.toString();
+    // console.log(strdata.includes("KILL"));
+    if (isEq(strdata, 'LIST'))
+        commandList();
+    else if (isEq(strdata, 'QUIT'))
+        commandQuit();
+    else if (strdata.includes('KILL'))
+        commandKill(strdata);
+    else {
+        // console.log('Unrecognised command');
+        APIGetArticles();
+        // APIaddChat('user1', 123, 'this is an article', null);
+        // APIgetChat(123);
+    }
+});
+
+function commandList() {
+    console.log('All active connections:');
+    if (clients.size == 0)
+        console.log('none');
+    else
+        for (let c of clients)
+            console.log(c.id);
+}
+function commandKill(c) {
+    if (clients.size == 0) {
+        console.log('There are currently no connected users');
+        return;
+    }
+    var id = c.replace('KILL ', '').trim();
+    for (let c of clients) {
+        if (c.id === id) {
+            c.send('You are being disconnected');
+            c.close();
+            clients.delete(c);
+            return;
+        }
+    }
+    console.log('User not found');
+}
+function commandQuit() {
+    for (let c of clients) {
+        c.send('This server will be going offline now and thus you will be disconnected');
+        c.close();
+        clients.delete(c);
+    }
+    console.log('All users have been disconnected and server will now go offline');
+    process.exit();
+}
+
+////////////////////////////////////////////////////////////////////////* Helper functions
+
+function isEq(a, b) {
+    var i = 0;
+    var j = 0;
+    var result = true;
+    while (j < b.length) {
+        if (a[i] != b[j] || i == a.length) {
+            result = false;
+        }
+        else
+            i++;
+        j++;
+    }
+    return result;
+}
 function getFile(name) {
     console.log('Getting ' + name);
     if (name == '/') {
@@ -152,7 +312,6 @@ function getFile(name) {
     }
 
 }
-
 function getParams(string) {
     var pars = string.split('&');
     var res = {};
@@ -162,69 +321,4 @@ function getParams(string) {
     }
 
     return res;
-}
-
-process.stdin.addListener('data', data => {
-    var strdata = data.toString();
-    // console.log(strdata.includes("KILL"));
-    if (isEq(strdata, 'LIST'))
-        commandList();
-    else if (isEq(strdata, 'QUIT'))
-        commandQuit();
-    else if (strdata.includes('KILL'))
-        commandKill(strdata);
-    else console.log('Unrecognised command');
-});
-
-function commandList() {
-    console.log('All active connections:');
-    if (clients.size == 0)
-        console.log('none');
-    else
-        for (let c of clients)
-            console.log(c.id);
-}
-
-function commandKill(c) {
-    if (clients.size == 0) {
-        console.log('There are currently no connected users');
-        return;
-    }
-    var id = c.replace('KILL ', '').trim();
-    for (let c of clients) {
-        if (c.id === id) {
-            c.send('You are being disconnected');
-            c.close();
-            clients.delete(c);
-            return;
-        }
-    }
-    console.log('User not found');
-}
-
-function commandQuit() {
-    if (clients.size == 0)
-        return;
-    for (let c of clients) {
-        c.send('This server will be going offline now and thus you will be disconnected');
-        c.close();
-        clients.delete(c);
-    }
-    console.log('All users have been disconnected and server will now go offline');
-    process.exit();
-}
-
-function isEq(a, b) {
-    var i = 0;
-    var j = 0;
-    var result = true;
-    while (j < b.length) {
-        if (a[i] != b[j] || i == a.length) {
-            result = false;
-        }
-        else
-            i++;
-        j++;
-    }
-    return result;
 }
