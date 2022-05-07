@@ -1,3 +1,4 @@
+/* eslint-disable no-prototype-builtins */
 /* eslint-disable no-unused-vars */
 // Janco Spies u21434159
 
@@ -32,15 +33,8 @@ const server = http.createServer(function (req, res) {
             res.write(f);
             res.end();
         }
-        // else {
-        //     console.log(req.url + ' not found, returning 200');
-        //     res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-        //     res.write('{"status" : "failed", "error" : "Not found"}');
-        //     res.end();
-        //     return;
-        // }
     } else {//post request to log in 
-        console.log('received post request');
+        console.log('Received login request');
         var reqdata = '';
         req.on('data', function (d) {
             reqdata += d;
@@ -64,7 +58,11 @@ const server = http.createServer(function (req, res) {
                     return console.log(err);
                 }
                 if (body['status'] != 'success') {
-                    return console.log('Login request failed: ' + body['data'][0]['message']);
+                    console.log('Login request failed: ' + body['data'][0]['message']);
+                    res.writeHead(200, { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' });
+                    res.write(JSON.stringify(body));
+                    res.end();
+                    return;
                 }
                 console.log('User ' + body['data'][0]['username'] + ' has logged in successfully');
 
@@ -79,13 +77,6 @@ const server = http.createServer(function (req, res) {
                 res.end();
 
             });
-
-
-
-
-
-
-
         });
     }
 
@@ -109,33 +100,56 @@ wss.on('connection', ws => {
 
     ws.on('message', function incoming(data) {
         var jData = JSON.parse(data);
-        if (jData['action'] == 'establish') {
+        if (jData['action'] == 'establish') {//////////////////////* When server receives establish request
+            var found = false;
             for (let c of clients)
-                if (c.id === ws.id)
+                if (c.id === ws.id && jData.hasOwnProperty('key')) {
                     c.key = jData['key'];
-            console.log(ws.id + ' has established the connection and their key is set to ' + jData['key']);
-        
-        
-        } else if (jData['action'] == 'getArticles') {
+                    found = true;
+                }
+            if (found) {
+                console.log(ws.id + ' has established the connection and their key is set to ' + jData['key']);
+                const resp = {
+                    content: 'establish',
+                    status: 'success'
+                };
+                ws.send(JSON.stringify(resp));
+            } else {
+                console.log(ws.id + ' has failed to establish a connection and has been disconnected');
+                const resp = {
+                    content: 'establish',
+                    status: 'failed'
+                };
+                ws.send(JSON.stringify(resp));
+                clients.delete(ws);
+                ws.close();
+            }
+
+
+
+        } else if (jData['action'] == 'getArticles') {//////////////////////* When server receives getArticles request
             console.log('Recieved request from ' + ws.id + ' for articles');
-            // var resp = APIGetArticles();
-            // console.log('resp: ' + JSON.stringify(resp));
-            // ws.send(JSON.stringify(resp));
-            APIGetArticles((err, resp)=>{
-                if (err)
+            APIGetArticles((err, resp) => {
+                if (err) {
                     console.log('Article request failed ' + err);
+                    const errresp = {
+                        content: 'articles',
+                        status: 'failed'
+                    };
+                    ws.send(JSON.stringify(errresp));
+                }
                 else {
-                    console.log('api response: ' + resp);
+                    resp.content = 'articles';
                     ws.send(JSON.stringify(resp));
                 }
             });
-        
-        }
-        if ('message' in jData) {
+
+        } else if (jData['action'] == 'message') {//////////////////////* When server receives message request
             console.log('Message received: ' + jData['message']);
             for (let c of clients) {
                 var repObj = {
                     'status': 'success',
+                    'content': 'message',
                     'message': 'Message of ' + jData['message'] + ' from ' + ws.id + ' acknowledged by server'
                 };
                 c.send(JSON.stringify(repObj));
@@ -177,16 +191,15 @@ function APIGetArticles(cb) {
         }
         if (body['status'] != 'success') {
             console.log('Failed');
-            return (false);
+            cb(false);
         }
-        console.log('Request successfull');
-        console.log(JSON.stringify(body));
-        cb(null, JSON.stringify(body));
-        // console.log(JSON.stringify(body, null, 4));
+        console.log('getArticle status: ' + body['status']);
+        // body.content = 'articles';
+        cb(null, body);
     });
 }
 
-function APIaddChat(user, article, content, reply) {
+function APIaddChat(user, article, content, reply, cb) {
     const jsonreq = {
         type: 'chat',
         op: 'add',
@@ -211,17 +224,18 @@ function APIaddChat(user, article, content, reply) {
         },
         success: function (data) {
             console.log('addChat status: ' + data['status']);
-            // return data['data'];
-            console.log(JSON.stringify(data['data'][0].message, null, 4));
+            cb(null, data['data'][0]['message']);
+            // console.log(JSON.stringify(data['data'][0].message, null, 4));
         },
         error: function (xhr, status, error) {
             console.log('Add chat api request failed');
             console.log('request:\n' + JSON.stringify(this, null, 4));
+            cb(false);
         },
     });
 }
 
-function APIgetChat(article) {
+function APIgetChat(article, cb) {
     const jsonreq = {
         type: 'chat',
         op: 'get',
@@ -241,12 +255,13 @@ function APIgetChat(article) {
         },
         success: function (data) {
             console.log('getChat status: ' + data['status']);
-            // return data['data'];
-            console.log(JSON.stringify(data['data'][0].message, null, 4));
+            cb(null, JSON.stringify(data['data']));
+            // console.log(JSON.stringify(data['data'][0].message, null, 4));
         },
         error: function (xhr, status, error) {
             console.log('Get chat api request failed');
             console.log('request:\n' + JSON.stringify(this, null, 4));
+            cb(false);
         },
     });
 }

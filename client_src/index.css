@@ -128,7 +128,7 @@ li #username_text:hover{
 	padding-top:11em;
 }
 
-#signup_form legend, #login_form legend{
+ #login_form legend{
 	font-size: 32px;
 	font-weight: bold;
 	text-decoration: underline;
@@ -153,12 +153,12 @@ li #username_text:hover{
 	border-radius: 8px;
 }
 
-#signup_form p, #login_form p{
+ #login_form p{
 	clear: both;
 	padding: 20px;
 }
 
-#signup_form #error_lbl, #login_form #error_lbl{
+ #login_form #error_lbl{
 	color: red;
 	padding: 0;
 	overflow: auto;

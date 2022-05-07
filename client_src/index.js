@@ -1,3 +1,4 @@
+/* eslint-disable indent */
 /* eslint-disable no-prototype-builtins */
 /* eslint-disable no-unused-vars */
 /* eslint-disable no-empty */
@@ -11,6 +12,7 @@ $(document).ready(function (e) {
     $('body').append($('<div>', { id: 'centered_div' }));
     $('#centered_div').append('<form id="login_form" name="login_form"></form>');
     $('#login_form').append($('<legend>').text('Enter your details to log in'));
+    $('#login_form').append($('<p id="error_lbl">'));
     $('#login_form').append($('<p>').html('<label class="form_lb" for="Username"> Username/Email: </label><input required class="Form_input" type="text" name="Username" id="usernamein">'));
     $('#login_form').append($('<p>').html('<label class="form_lb" for="Pass">Password: </label><input required class="Form_input" type="password" name="Pass" id="passwordin">'));
     $('#login_form').append($('<p>').html('<input class="Form_Sub" type="button" value="Submit" onclick="login()"/>'));
@@ -21,6 +23,7 @@ $(document).ready(function (e) {
 });
 
 function login() {
+    $('#error_lbl').text('');
     let fdata = new FormData($('#login_form')[0]);
     let jsonreq = Object.fromEntries(fdata.entries());
     jsonreq.type = 'login';
@@ -29,7 +32,10 @@ function login() {
         jsonreq,
         function (data, status) {
             console.log('status: ' + status);
-            // alert('data: ' + data);
+            if (data['status'] !== 'success') {
+                $('#error_lbl').text('Login failed : ' + data['data'][0]['message']);
+                return;
+            }
             sessionStorage.setItem('username', data['username']);
             sessionStorage.setItem('key', data['key']);
             setMainWindow();
@@ -41,6 +47,7 @@ function login() {
 const PORT = 8321;
 var socket;
 function setMainWindow() {
+    $(document).attr('title', 'News4You Chatpage');
     $('#centered_div').empty();
     $('#centered_div').append($('<button id="reconnect">').text('Reconnect'), $('<button id="disconnect">').text('Disconnect'));
     $('#centered_div').append($('<h2 id="connectionstat">'));
@@ -67,11 +74,13 @@ function reconnect() {
         if (text.length == 0)
             return;
         var messObj = {
+            'action': 'message',
             'message': text
         };
 
         socket.send(JSON.stringify(messObj));
         $('#data').append('Sending ' + text + ' <br/>');
+        return false;
 
     });
     $('#disconnect').on('click', function (e) {
@@ -92,7 +101,7 @@ function reconnect() {
     });
 }
 
-function socOpen(ev) {
+function socOpen(ev) {//* When socket is opened
     console.log('opening');
     $('#disconnect').attr('disabled', false);
     $('#reconnect').attr('disabled', false);
@@ -105,57 +114,45 @@ function socOpen(ev) {
     $('#connectionstat').text('Connected');
 }
 
-function socMessage(ev) {
+function socMessage(ev) {//* When message is received
     console.log(ev);
     var response = JSON.parse(ev.data);
-    if (!response.hasOwnProperty('message'))
-        console.log(response);
-    // console.log(JSON.stringify(response, null, 4));
-    else
-        $('#data').append('Reply: ' + response['message'] + '<br/><br/>');
+    switch (response['content']) {
+        case 'establish':
+            {
+                console.log('received establish response');
+                break;
+            }
+        case 'articles':
+            {
+                console.log('received getarticle response');
+                break;
+            }
+        case 'message': {
+            $('#data').append('Reply: ' + response['message'] + '<br/><br/>');
+            console.log('received message response');
+            break;
+        }
+        default:
+            {
+                console.log('received unknown response: ' + response['action']);
+                break;
+            }
+    }
+
+
+
+
+    // if (!response.hasOwnProperty('message'))
+    //     console.log(JSON.stringify(response, null, 4));
+    // else
+    //     $('#data').append('Reply: ' + response['message'] + '<br/><br/>');
 }
 
-function socClose(ev) {
+function socClose(ev) {//* When socket is closed
     $('#data').append('Connection lost<br/><br/>');
     $('#disconnect').attr('disabled', true);
     $('#reconnect').attr('disabled', false);
     $('#connectionstat').text('Disconnected');
 }
-
-// socket.onopen = function () {
-//     $("#diconnect").attr("disabled", true);
-//     $("#reconnect").attr("disabled", false);
-//     $("#data").append("<h2 id ='connectionstat'>Connected</h2><br/>");
-//     $("#data").append("Sending Hello <br/>");
-//     socket.send('hello');
-//     $("#send").on("click", function (e) {
-//         e.preventDefault;
-//         var text = $("#message").val();
-//         if (text.length == 0)
-//             return
-//         socket.send(text);
-//         $("#data").append("Sending " + text + " <br/>");
-//     });
-//     $("#disconnect").on('click', function (e) {
-//         e.preventDefault;
-//         $("#connectionstat").text("Disconnected");
-//         socket.close();
-//     });
-// };
-// socket.onmessage = function (s) {
-//     console.log(s);
-//     $("#data").append("Reply: " + s.data + "<br/><br/>");
-// };
-
-// socket.onclose = function (e) {
-//     $("#data").append("Connection lost<br/><br/>");
-//     $("#disconnect").attr("disabled", true);
-//     $("#reconnect").attr("disabled", false);
-//     $("#connectionstat").text("Disconnected");
-//     $("#reconnect").on('click', function (e) {
-//         e.preventDefault;
-//         $("#connectionstat").text("Attempting to reconnect");
-//         socket = new WebSocket('ws://localhost:' + PORT);
-//     });
-// }
 
