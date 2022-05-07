@@ -182,10 +182,12 @@ function setArticles(data) {
 
 
         $('#articles').append($('<div class="article_box" id="box' + count + '">'));
-        $('#box' + count).append($('<img class="article_img" alt="article image" src="' + articles[i].image_url + '"/>'));
-        $('#box' + count).append($('<div class="headline_container">').html('<h1 class="headline"><a class="headline_link" target="_blank" onclick="openArt(\'' + articles[i].url + '\')">' + articles[i].title + '</a></h1><br /><br /><br />'));
-        $('#box' + count).append($('<p class="description" >').text((articles[i].description.length == 0) ? 'None' : articles[i].description));
-        $('#box' + count).append($('<div class="bottom_el">').append($('<div class="bottom_left_el">')));
+        $('#box' + count).append([
+            $('<img class="article_img" alt="article image" src="' + articles[i].image_url + '"/>'),
+            $('<div class="headline_container">').html('<h1 class="headline"><a class="headline_link" target="_blank" onclick="openArt(\'' + articles[i].url + '\')">' + articles[i].title + '</a></h1><br /><br /><br />'),
+            $('<p class="description" >').text((articles[i].description.length == 0) ? 'None' : articles[i].description),
+            $('<div class="bottom_el">').append($('<div class="bottom_left_el">'))
+        ]);
         $('.bottom_left_el').html('<p class="author">Author:' + articles[i].source + '</p><p class="category">Category: ' + articles[i].category + '</p><p class="date">' + convertTimestamp(articles[i].date) + '</p>');
         count++;
 
@@ -200,21 +202,33 @@ function openArt(inp) {
         $('.close').parent().remove();
     });
 
-    $('#chat_container').append($('<div id="message_container">').text('This is the msg container'));
-    $('#chat_container').append($('<form id="chat_form">').html('<input type="text" id="msg" />'));
-    $('#chat_container').append($('<button id="sendMsg">').text('Send'));
+    $('#chat_container').append([
+        $('<div id="message_container">').html('<p>No messages have been added for this article...yet</p>'),
+        $('<form id="chat_form">').html('<input type="text" id="msg" />'),
+        $('<button id="sendMsg">').text('Send')
+    ]);
 
     $('#sendMsg').click((e) => {
         e.preventDefault;
-        sendMessage();
+        sendMessage($('#msg').val());
+        $('#msg').val('');
     });
 
 
 
 }
 
-function sendMessage() {
-    console.log('Sending chat message');
+function sendMessage(content) {
+    // console.log('Adding chat message with content:\n');
+    // console.log(content);
+    $('#message_container').find('p').remove();
+    const time = Math.floor(Date.now() / 1000);
+    $('#message_container').append('<div id="' + time + '" class="Msg">');
+    $('#' + time).append($('<div class="uname">').text(sessionStorage.getItem('username')));
+    $('#' + time).append($('<div class="timestamp">').text(convertNiceTimestamp(time)));
+    $('#' + time).append($('<div class="msgcontent">').text(content));
+    $('#message_container').append('<br>');
+    $('#message_container').scrollTop($('#message_container').height());
     return;
 }
 function convertTimestamp(timestamp) {
@@ -224,4 +238,11 @@ function convertTimestamp(timestamp) {
         dd = ('0' + d.getDate()).slice(-2);
     var time = yyyy + '-' + mm + '-' + dd;
     return time;
+}
+
+function convertNiceTimestamp(stamp) {
+    const milliseconds = stamp * 1000;
+    const dateObject = new Date(milliseconds);
+    const humanDateFormat = dateObject.toLocaleString();
+    return humanDateFormat;
 }

@@ -397,8 +397,31 @@ li #username_text:hover{
     margin-left: 12px;
     margin-right: 30px;
     height: 235px;
+	overflow: auto;
+	text-align: center;
+    font-weight: bold;
+    font-size: 25px;
+}
 
-
+.Msg{
+	/* width:80%; */
+	background-color: rgb(21, 17, 17);
+	display: inline-block;
+	margin-bottom: 3px;
+	border-radius: 10px;
+	padding: 3px;
+}
+.uname{
+	color: #ff3349;
+	font-size: 21px;
+}
+.timestamp{
+	color: #8f8f8f;
+	font-size: 12px;
+}
+.msgcontent{
+	color: white;
+	font-size: 20px;
 }
 
 #sendMsg{
@@ -409,6 +432,7 @@ li #username_text:hover{
 	left:95%;
 	background-color:blue;
 	color: white;
+	font-weight: bold;
 }
 #sendMsg:hover{
 	background-color:rgb(93, 93, 255);
