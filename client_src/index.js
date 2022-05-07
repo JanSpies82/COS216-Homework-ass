@@ -20,6 +20,10 @@ $(document).ready(function (e) {
         $('#usernamein').val('DefaultUser');
         $('#passwordin').val('Password123!');
     });
+
+    //!Testing code
+    $('legend').click();
+    $('.Form_Sub').click();
 });
 
 function login() {
@@ -99,6 +103,8 @@ function reconnect() {
         };
         socket.send(JSON.stringify(req));
     });
+
+
 }
 
 function socOpen(ev) {//* When socket is opened
@@ -112,6 +118,9 @@ function socOpen(ev) {//* When socket is opened
     };
     socket.send(JSON.stringify(reqEst));
     $('#connectionstat').text('Connected');
+
+    //!Testing code
+    $('#getArt').click();
 }
 
 function socMessage(ev) {//* When message is received
@@ -175,7 +184,7 @@ function setArticles(data) {
         $('#articles').append($('<div class="article_box" id="box' + count + '">'));
         $('#box' + count).append($('<img class="article_img" alt="article image" src="' + articles[i].image_url + '"/>'));
         $('#box' + count).append($('<div class="headline_container">').html('<h1 class="headline"><a class="headline_link" target="_blank" onclick="openArt(\'' + articles[i].url + '\')">' + articles[i].title + '</a></h1><br /><br /><br />'));
-        $('#box' + count).append($('<p class="description" >').text(articles[i].description));
+        $('#box' + count).append($('<p class="description" >').text((articles[i].description.length == 0) ? 'None' : articles[i].description));
         $('#box' + count).append($('<div class="bottom_el">').append($('<div class="bottom_left_el">')));
         $('.bottom_left_el').html('<p class="author">Author:' + articles[i].source + '</p><p class="category">Category: ' + articles[i].category + '</p><p class="date">' + convertTimestamp(articles[i].date) + '</p>');
         count++;
@@ -185,7 +194,28 @@ function setArticles(data) {
 
 function openArt(inp) {
     console.log('clicked ' + inp);
+    $('body').append($('<div id="chat_container">').html('<div class="close">X</div>'));
+    $('.close').click((e) => {
+        e.preventDefault;
+        $('.close').parent().remove();
+    });
 
+    $('#chat_container').append($('<div id="message_container">').text('This is the msg container'));
+    $('#chat_container').append($('<form id="chat_form">').html('<input type="text" id="msg" />'));
+    $('#chat_container').append($('<button id="sendMsg">').text('Send'));
+
+    $('#sendMsg').click((e) => {
+        e.preventDefault;
+        sendMessage();
+    });
+
+
+
+}
+
+function sendMessage() {
+    console.log('Sending chat message');
+    return;
 }
 function convertTimestamp(timestamp) {
     var d = new Date(timestamp * 1000),
