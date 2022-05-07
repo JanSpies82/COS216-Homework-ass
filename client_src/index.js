@@ -126,6 +126,7 @@ function socMessage(ev) {//* When message is received
         case 'articles':
             {
                 console.log('received getarticle response');
+                setArticles(response);
                 break;
             }
         case 'message': {
@@ -139,14 +140,6 @@ function socMessage(ev) {//* When message is received
                 break;
             }
     }
-
-
-
-
-    // if (!response.hasOwnProperty('message'))
-    //     console.log(JSON.stringify(response, null, 4));
-    // else
-    //     $('#data').append('Reply: ' + response['message'] + '<br/><br/>');
 }
 
 function socClose(ev) {//* When socket is closed
@@ -156,3 +149,49 @@ function socClose(ev) {//* When socket is closed
     $('#connectionstat').text('Disconnected');
 }
 
+function setArticles(data) {
+    $('#centered_div').remove();
+    $('body').append($('<div id="articles" class="main_content">'));
+
+    var author = [];
+    var title = [];
+    var description = [];
+    var url = [];
+    var img = [];
+    var publishedDate = [];
+    var category = [];
+    var count = 0;
+    var articles = data['data'];
+    for (var i in articles) {
+        title.push(articles[i].title);
+        description.push(articles[i].description);
+        url.push(articles[i].url);
+        img.push(articles[i].image_url);
+        publishedDate.push(articles[i].date);
+        author.push(articles[i].source);
+        category.push(articles[i].category);
+
+
+        $('#articles').append($('<div class="article_box" id="box' + count + '">'));
+        $('#box' + count).append($('<img class="article_img" alt="article image" src="' + articles[i].image_url + '"/>'));
+        $('#box' + count).append($('<div class="headline_container">').html('<h1 class="headline"><a class="headline_link" target="_blank" onclick="openArt(\'' + articles[i].url + '\')">' + articles[i].title + '</a></h1><br /><br /><br />'));
+        $('#box' + count).append($('<p class="description" >').text(articles[i].description));
+        $('#box' + count).append($('<div class="bottom_el">').append($('<div class="bottom_left_el">')));
+        $('.bottom_left_el').html('<p class="author">Author:' + articles[i].source + '</p><p class="category">Category: ' + articles[i].category + '</p><p class="date">' + convertTimestamp(articles[i].date) + '</p>');
+        count++;
+
+    }
+}
+
+function openArt(inp) {
+    console.log('clicked ' + inp);
+
+}
+function convertTimestamp(timestamp) {
+    var d = new Date(timestamp * 1000),
+        yyyy = d.getFullYear(),
+        mm = ('0' + (d.getMonth() + 1)).slice(-2),
+        dd = ('0' + d.getDate()).slice(-2);
+    var time = yyyy + '-' + mm + '-' + dd;
+    return time;
+}
