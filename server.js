@@ -185,6 +185,39 @@ wss.on('connection', ws => {
                 }
             });
         }
+        else if (jData['action'] == 'getchat') {
+            console.log('Recieved request from ' + ws.id + ' to get chats');
+            APIgetChat(jData['article'], (err, resp) => {
+                if (err) {
+                    console.log('Get chat ' + err);
+                    const errresp = {
+                        content: 'getchatresp',
+                        status: 'failed'
+                    };
+                    ws.send(JSON.stringify(errresp));
+                }
+                else {
+                    if (resp == null) {
+                        console.log('resp is null');
+                        const errresp = {
+                            content: 'getchatresp',
+                            status: 'failed'
+                        };
+                        ws.send(JSON.stringify(errresp));
+                    } else if (resp == false) {
+                        console.log('resp is false');
+                        const errresp = {
+                            content: 'getchatresp',
+                            status: 'failed'
+                        };
+                        ws.send(JSON.stringify(errresp));
+                    } else {
+                        resp.content = 'getchatresp';
+                        ws.send(JSON.stringify(resp));
+                    }
+                }
+            });
+        }
     });
 
     ws.on('close', function incoming(data) {
@@ -242,8 +275,6 @@ function APIaddChat(user, article, content, reply, cb) {
         return: [''],
 
     };
-    console.log('api req:\n');
-    console.log(JSON.stringify(jsonreq, null, 4));
     const options = {
         url: process.env.WURL,
         json: true,
@@ -275,29 +306,34 @@ function APIgetChat(article, cb) {
         type: 'chat',
         op: 'get',
         key: process.env.SERVERKEY,
-        article: article,
+        url: article,
         return: [''],
 
     };
 
-    $.ajax({//!replace with request.post
+    const options = {
         url: process.env.WURL,
-        type: 'POST',
-        data: JSON.stringify(jsonreq),
-        headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Content-Type': 'application/json'
-        },
-        success: function (data) {
-            console.log('getChat status: ' + data['status']);
-            cb(null, JSON.stringify(data['data']));
-            // console.log(JSON.stringify(data['data'][0].message, null, 4));
-        },
-        error: function (xhr, status, error) {
-            console.log('Get chat api request failed');
-            console.log('request:\n' + JSON.stringify(this, null, 4));
+        json: true,
+        body: jsonreq,
+        auth: {
+            user: process.env.WUSERNAME,
+            pass: process.env.WPASSWORD,
+            sendImmediately: false
+        }
+    };
+
+    request.post(options, (err, resp, body) => {
+        if (err) {
+            console.log(err);
             cb(false);
-        },
+        }
+        console.log('getChat status: ' + body['status']);
+        if (body['status'] != 'success') {
+            console.log(body['data'][0]['message']);
+            cb(false);
+        } else {
+            cb(null, body);
+        }
     });
 }
 //////////////////////////////////////////////////////////////////////* Internal server commands 

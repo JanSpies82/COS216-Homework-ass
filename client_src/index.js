@@ -152,8 +152,21 @@ function socMessage(ev) {//* When message is received
             } else {
                 toastr.error('An error occurred while trying to add that message');
             }
+            break;
+        }
+        case 'getchatresp': {
+            console.log('received: ');
             console.log(response);
-
+            if (response['status'] === 'success') {
+                const artarr = response['data'];
+                console.log(artarr);
+                for (var a in artarr) {
+                    console.log('a: ' + a);
+                    addMsg(artarr[a]['user'], artarr[a]['time'], artarr[a]['content'], artarr[a]['reply']);
+                }
+            } else {
+                toastr.error('An error occurred while trying to get messages for this article');
+            }
             break;
         }
         default:
@@ -226,8 +239,12 @@ function openArt(inp) {
         sendMessage($('#msg').val(), inp);
     });
 
-
-
+    console.log('opened art');
+    const reqObj = {
+        action: 'getchat',
+        article: inp
+    };
+    socket.send(JSON.stringify(reqObj));
 }
 
 function sendMessage(cont, art) {
@@ -236,7 +253,6 @@ function sendMessage(cont, art) {
         $('input:first').focus();
         return;
     }
-
     const reqObj = {
         action: 'sendchat',
         newChat: {
