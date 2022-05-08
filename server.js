@@ -7,7 +7,7 @@ const fs = require('fs');
 const WebSocket = require('ws');
 const request = require('request');
 require('dotenv').config();
-const clientFiles = ['/index.css', '/index.html', '/', '/index.js', '/favicon.ico', '/SiteLogo.svg', '/SiteLogo.png', '/testpage.html'];
+const clientFiles = ['/index.css', '/index.html', '/', '/index.js', '/favicon.ico', '/SiteLogo.svg', '/SiteLogo.png', '/testpage.html', '/toastr.min.js', '/toastr.min.css'];
 const clients = new Set();
 const jsdom = require('jsdom');
 const dom = new jsdom.JSDOM('');
@@ -124,9 +124,6 @@ wss.on('connection', ws => {
                 clients.delete(ws);
                 ws.close();
             }
-
-
-
         } else if (jData['action'] == 'getArticles') {//////////////////////* When server receives getArticles request
             console.log('Recieved request from ' + ws.id + ' for articles');
             APIGetArticles((err, resp) => {
@@ -154,6 +151,39 @@ wss.on('connection', ws => {
                 };
                 c.send(JSON.stringify(repObj));
             }
+        }
+        else if (jData['action'] == 'sendchat') {
+            console.log('Recieved request from ' + ws.id + ' to send chat');
+            APIaddChat(jData['newChat']['user'], jData['newChat']['article'], jData['newChat']['content'], jData['newChat']['reply'], (err, resp) => {
+                if (err) {
+                    console.log('Add chat ' + err);
+                    const errresp = {
+                        content: 'chatresp',
+                        status: 'failed'
+                    };
+                    ws.send(JSON.stringify(errresp));
+                }
+                else {
+                    if (resp == null) {
+                        console.log('resp is null');
+                        const errresp = {
+                            content: 'chatresp',
+                            status: 'failed'
+                        };
+                        ws.send(JSON.stringify(errresp));
+                    } else if (resp == false) {
+                        console.log('resp is false');
+                        const errresp = {
+                            content: 'chatresp',
+                            status: 'failed'
+                        };
+                        ws.send(JSON.stringify(errresp));
+                    } else {
+                        resp.content = 'chatresp';
+                        ws.send(JSON.stringify(resp));
+                    }
+                }
+            });
         }
     });
 
@@ -194,7 +224,6 @@ function APIGetArticles(cb) {
             cb(false);
         }
         console.log('getArticle status: ' + body['status']);
-        // body.content = 'articles';
         cb(null, body);
     });
 }
@@ -213,25 +242,31 @@ function APIaddChat(user, article, content, reply, cb) {
         return: [''],
 
     };
-
-    $.ajax({
+    console.log('api req:\n');
+    console.log(JSON.stringify(jsonreq, null, 4));
+    const options = {
         url: process.env.WURL,
-        type: 'POST',
-        data: JSON.stringify(jsonreq),
-        headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Content-Type': 'application/json'
-        },
-        success: function (data) {
-            console.log('addChat status: ' + data['status']);
-            cb(null, data['data'][0]['message']);
-            // console.log(JSON.stringify(data['data'][0].message, null, 4));
-        },
-        error: function (xhr, status, error) {
-            console.log('Add chat api request failed');
-            console.log('request:\n' + JSON.stringify(this, null, 4));
+        json: true,
+        body: jsonreq,
+        auth: {
+            user: process.env.WUSERNAME,
+            pass: process.env.WPASSWORD,
+            sendImmediately: false
+        }
+    };
+
+    request.post(options, (err, resp, body) => {
+        if (err) {
+            console.log(err);
             cb(false);
-        },
+        }
+        console.log('addChat status: ' + body['status']);
+        if (body['status'] != 'success') {
+            console.log(body['data'][0]['message']);
+            cb(false);
+        } else {
+            cb(null, body);
+        }
     });
 }
 
@@ -245,7 +280,7 @@ function APIgetChat(article, cb) {
 
     };
 
-    $.ajax({
+    $.ajax({//!replace with request.post
         url: process.env.WURL,
         type: 'POST',
         data: JSON.stringify(jsonreq),

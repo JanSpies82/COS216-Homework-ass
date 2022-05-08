@@ -1,3 +1,4 @@
+/* eslint-disable no-useless-escape */
 /* eslint-disable indent */
 /* eslint-disable no-prototype-builtins */
 /* eslint-disable no-unused-vars */
@@ -20,6 +21,8 @@ $(document).ready(function (e) {
         $('#usernamein').val('DefaultUser');
         $('#passwordin').val('Password123!');
     });
+
+    toastr.options.closeButton = true;
 
     //!Testing code
     $('legend').click();
@@ -143,6 +146,16 @@ function socMessage(ev) {//* When message is received
             console.log('received message response');
             break;
         }
+        case 'chatresp': {
+            if (response['status'] === 'success') {
+                addMsg(response['data'][0]['newChat']['user'], response['data'][0]['newChat']['time'], response['data'][0]['newChat']['content'], response['data'][0]['newChat']['reply']);
+            } else {
+                toastr.error('An error occurred while trying to add that message');
+            }
+            console.log(response);
+
+            break;
+        }
         default:
             {
                 console.log('received unknown response: ' + response['action']);
@@ -210,27 +223,45 @@ function openArt(inp) {
 
     $('#sendMsg').click((e) => {
         e.preventDefault;
-        sendMessage($('#msg').val());
-        $('#msg').val('');
+        sendMessage($('#msg').val(), inp);
     });
 
 
 
 }
 
-function sendMessage(content) {
-    // console.log('Adding chat message with content:\n');
-    // console.log(content);
-    $('#message_container').find('p').remove();
-    const time = Math.floor(Date.now() / 1000);
-    $('#message_container').append('<div id="' + time + '" class="Msg">');
-    $('#' + time).append($('<div class="uname">').text(sessionStorage.getItem('username')));
-    $('#' + time).append($('<div class="timestamp">').text(convertNiceTimestamp(time)));
-    $('#' + time).append($('<div class="msgcontent">').text(content));
-    $('#message_container').append('<br>');
-    $('#message_container').scrollTop($('#message_container').height());
+function sendMessage(cont, art) {
+    if (cont == '') {
+        toastr.error('Please enter the message you would like to send');
+        $('input:first').focus();
+        return;
+    }
+
+    const reqObj = {
+        action: 'sendchat',
+        newChat: {
+            user: sessionStorage.getItem('key'),
+            article: art,
+            content: cont,
+            reply: null
+        }
+    };
+    socket.send(JSON.stringify(reqObj));
     return;
 }
+
+function addMsg(user, time, content, reply) {
+    $('#message_container').find('p').remove();
+    $('#message_container').append('<div id="' + user + time + '" class="Msg">');
+    $('#' + user + time).append($('<div class="uname">').text(user));
+    $('#' + user + time).append($('<div class="timestamp">').text(convertNiceTimestamp(time)));
+    $('#' + user + time).append($('<div class="msgcontent">').text(content));
+    $('#message_container').append('<br>');
+    $('#message_container').scrollTop($('#message_container').height());
+    $('#msg').val('');
+    return;
+}
+
 function convertTimestamp(timestamp) {
     var d = new Date(timestamp * 1000),
         yyyy = d.getFullYear(),
@@ -245,4 +276,15 @@ function convertNiceTimestamp(stamp) {
     const dateObject = new Date(milliseconds);
     const humanDateFormat = dateObject.toLocaleString();
     return humanDateFormat;
+}
+
+function xssencode(input) {
+    var returned = input.replace(/<[^>]*>/g, '');
+    return returned.replace(/[-\[\]{@&!%}\(_=\'\"\)<>\*\+\?.,\^\$|#]/g, '\\$&');
+}
+
+function xssdecode(input) {
+    if (input !== null)
+        return input.replace(/\\/, '');
+    return null;
 }
