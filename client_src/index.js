@@ -5,6 +5,7 @@
 /* eslint-disable no-empty */
 /* eslint-disable no-undef */
 
+
 $(document).ready(function (e) {
     sessionStorage.setItem('username', null);
     sessionStorage.setItem('key', null);
@@ -38,7 +39,7 @@ function login() {
         'http://localhost:' + PORT + '/',
         jsonreq,
         function (data, status) {
-            console.log('status: ' + status);
+            console.log('login status: ' + status);
             if (data['status'] !== 'success') {
                 $('#error_lbl').text('Login failed : ' + data['data'][0]['message']);
                 return;
@@ -55,12 +56,6 @@ const PORT = 8321;
 var socket;
 function setMainWindow() {
     $(document).attr('title', 'News4You Chatpage');
-    $('#centered_div').empty();
-    $('#centered_div').append($('<button id="reconnect">').text('Reconnect'), $('<button id="disconnect">').text('Disconnect'));
-    $('#centered_div').append($('<h2 id="connectionstat">'));
-    $('#centered_div').append($('<div id="data">'));
-    $('#centered_div').append($('<form id="messagefrm">').append('<input type="text" name="message" id="message" /><button id="send">Send</button>'));
-    $('#centered_div').append($('<button id="getArt">Get articles</button>'));
     reconnect();
 }
 
@@ -74,46 +69,10 @@ function reconnect() {
     socket.onopen = socOpen;
     socket.onmessage = socMessage;
     socket.onclose = socClose;
-    $('#send').on('click', function (e) {
-        e.preventDefault;
-        console.log('sending');
-        var text = $('#message').val();
-        if (text.length == 0)
-            return;
-        var messObj = {
-            'action': 'message',
-            'message': text
-        };
-
-        socket.send(JSON.stringify(messObj));
-        $('#data').append('Sending ' + text + ' <br/>');
-        return false;
-
-    });
-    $('#disconnect').on('click', function (e) {
-        e.preventDefault;
-        socket.close();
-    });
-    $('#reconnect').on('click', function (e) {
-        e.preventDefault;
-        reconnect();
-    });
-    $('#getArt').click((e) => {
-        e.preventDefault;
-        console.log('sending article request');
-        const req = {
-            'action': 'getArticles'
-        };
-        socket.send(JSON.stringify(req));
-    });
-
-
 }
 
 function socOpen(ev) {//* When socket is opened
-    console.log('opening');
-    $('#disconnect').attr('disabled', false);
-    $('#reconnect').attr('disabled', false);
+    console.log('opening socket connection');
     $('#data').append('<br/>');
     var reqEst = {
         'action': 'establish',
@@ -122,12 +81,14 @@ function socOpen(ev) {//* When socket is opened
     socket.send(JSON.stringify(reqEst));
     $('#connectionstat').text('Connected');
 
-    //!Testing code
-    $('#getArt').click();
+    console.log('sending article request');
+    const req = {
+        'action': 'getArticles'
+    };
+    socket.send(JSON.stringify(req));
 }
 
 function socMessage(ev) {//* When message is received
-    console.log(ev);
     var response = JSON.parse(ev.data);
     switch (response['content']) {
         case 'establish':
@@ -148,21 +109,20 @@ function socMessage(ev) {//* When message is received
         }
         case 'chatresp': {
             if (response['status'] === 'success') {
-                addMsg(response['data'][0]['newChat']['user'], response['data'][0]['newChat']['time'], response['data'][0]['newChat']['content'], response['data'][0]['newChat']['reply']);
+                addMsg(response['data'][0]['newChat']['user'], response['data'][0]['newChat']['time'], response['data'][0]['newChat']['content'], response['data'][0]['newChat']['replyuser'], response['data'][0]['newChat']['replycontent']);
             } else {
                 toastr.error('An error occurred while trying to add that message');
             }
             break;
         }
         case 'getchatresp': {
-            console.log('received: ');
-            console.log(response);
+            console.log('Get chat response: ');
+            // console.log(response);
             if (response['status'] === 'success') {
                 const artarr = response['data'];
-                console.log(artarr);
                 for (var a in artarr) {
-                    console.log('a: ' + a);
-                    addMsg(artarr[a]['user'], artarr[a]['time'], artarr[a]['content'], artarr[a]['reply']);
+                    console.log('getchat:\n', JSON.stringify(artarr[a], null, 4));
+                    addMsg(artarr[a]['user'], artarr[a]['time'], artarr[a]['content'], artarr[a]['replyuser'], artarr[a]['replycontent']);
                 }
             } else {
                 toastr.error('An error occurred while trying to get messages for this article');
@@ -221,7 +181,6 @@ function setArticles(data) {
 }
 
 function openArt(inp) {
-    console.log('clicked ' + inp);
     $('body').append($('<div id="chat_container">').html('<div class="close">X</div>'));
     $('.close').click((e) => {
         e.preventDefault;
@@ -230,16 +189,16 @@ function openArt(inp) {
 
     $('#chat_container').append([
         $('<div id="message_container">').html('<p>No messages have been added for this article...yet</p>'),
-        $('<form id="chat_form">').html('<input type="text" id="msg" />'),
+        $('<form id="chat_form">').html('<input type="text" id="msg_input" /> <input type="hidden" id="replyTime" value=null>'),
         $('<button id="sendMsg">').text('Send')
     ]);
 
     $('#sendMsg').click((e) => {
         e.preventDefault;
-        sendMessage($('#msg').val(), inp);
+        console.log('time saved in hidden el (being sent) : ' + $('#replyTime').val());
+        sendMessage($('#msg_input').val(), inp, $('#replyTime').val());
     });
 
-    console.log('opened art');
     const reqObj = {
         action: 'getchat',
         article: inp
@@ -247,7 +206,7 @@ function openArt(inp) {
     socket.send(JSON.stringify(reqObj));
 }
 
-function sendMessage(cont, art) {
+function sendMessage(cont, art, reptime = null) {
     if (cont == '') {
         toastr.error('Please enter the message you would like to send');
         $('input:first').focus();
@@ -259,23 +218,50 @@ function sendMessage(cont, art) {
             user: sessionStorage.getItem('key'),
             article: art,
             content: cont,
-            reply: null
+            reply: reptime
         }
     };
+    console.log('sending Message: \n');
+    console.log(JSON.stringify(reqObj, null, 4));
     socket.send(JSON.stringify(reqObj));
+    $('#reply_legend').remove();
     return;
 }
 
-function addMsg(user, time, content, reply) {
+function addMsg(user, time, content, replyuser, replycontent) {
     $('#message_container').find('p').remove();
     $('#message_container').append('<div id="' + user + time + '" class="Msg">');
+    if (replyuser != null && replycontent != null)
+        $('#' + user + time).append($('<div class="reply">').html('Replying to: ' + replyuser + '~' + replycontent));
     $('#' + user + time).append($('<div class="uname">').text(user));
+    $('#' + user + time).append($('<span class="tooltiptext">').html('Click on a message to reply to it'));
     $('#' + user + time).append($('<div class="timestamp">').text(convertNiceTimestamp(time)));
+    $('#' + user + time).append($('<div class="unixtime">').text(time));
+    console.log('Real time of "' + content + '": ' + time);
     $('#' + user + time).append($('<div class="msgcontent">').text(content));
     $('#message_container').append('<br>');
+    $('#' + user + time).wrap($('<span class="tooltip">'));
     $('#message_container').scrollTop($('#message_container').height());
-    $('#msg').val('');
+    $('#msg_input').val('');
+    $('#' + user + time).click((e) => {
+        e.preventDefault;
+        createReply($('#' + user + time + ' .uname').text(), $('#' + user + time + ' .msgcontent').text(), $('#' + user + time + ' .unixtime').text());
+    });
     return;
+}
+
+function createReply(Repuname, Repcontent, Reptime) {
+    $('#reply_legend').html('');
+    $('#reply_legend').remove();
+    $('input:first').before($('<legend id="reply_legend">').html('<div class="close">X</div><div id="replyUname">' + Repuname + ':</div><div id="replyContent">' + Repcontent + '</div>'));
+    $('#reply_legend .close').click((e) => {
+        e.preventDefault;
+        $('#reply_legend').remove();
+        $('#replyTime').val(null);
+    });
+    $('#replyTime').val(Reptime);
+    console.log('time sent to reply func: ' + Reptime);
+
 }
 
 function convertTimestamp(timestamp) {
