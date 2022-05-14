@@ -5,7 +5,6 @@
 /* eslint-disable no-empty */
 /* eslint-disable no-undef */
 
-
 $(document).ready(function (e) {
     sessionStorage.setItem('username', null);
     sessionStorage.setItem('key', null);
@@ -27,7 +26,7 @@ $(document).ready(function (e) {
 
     //!Testing code
     $('legend').click();
-    $('.Form_Sub').click();
+    // $('.Form_Sub').click();
 });
 
 function login() {
@@ -117,7 +116,6 @@ function socMessage(ev) {//* When message is received
         }
         case 'getchatresp': {
             console.log('Get chat response: ');
-            // console.log(response);
             if (response['status'] === 'success') {
                 const artarr = response['data'];
                 for (var a in artarr) {
@@ -127,6 +125,12 @@ function socMessage(ev) {//* When message is received
             } else {
                 toastr.error('An error occurred while trying to get messages for this article');
             }
+            break;
+        }
+        case 'newMessages': {
+            toastr.info('New message received!');
+            console.log(JSON.stringify(response, null, 4));
+            addMsg(response['data'][0]['user'], response['data'][0]['time'], response['data'][0]['content'], response['data'][0]['replyuser'], response['data'][0]['replycontent']);
             break;
         }
         default:
@@ -195,7 +199,8 @@ function openArt(inp) {
 
     $('#sendMsg').click((e) => {
         e.preventDefault;
-        console.log('time saved in hidden el (being sent) : ' + $('#replyTime').val());
+        if (!$('#reply_legend').length)
+            $('#replyTime').val(null);
         sendMessage($('#msg_input').val(), inp, $('#replyTime').val());
     });
 
@@ -222,7 +227,6 @@ function sendMessage(cont, art, reptime = null) {
         }
     };
     console.log('sending Message: \n');
-    console.log(JSON.stringify(reqObj, null, 4));
     socket.send(JSON.stringify(reqObj));
     $('#reply_legend').remove();
     return;
@@ -237,7 +241,6 @@ function addMsg(user, time, content, replyuser, replycontent) {
     $('#' + user + time).append($('<span class="tooltiptext">').html('Click on a message to reply to it'));
     $('#' + user + time).append($('<div class="timestamp">').text(convertNiceTimestamp(time)));
     $('#' + user + time).append($('<div class="unixtime">').text(time));
-    console.log('Real time of "' + content + '": ' + time);
     $('#' + user + time).append($('<div class="msgcontent">').text(content));
     $('#message_container').append('<br>');
     $('#' + user + time).wrap($('<span class="tooltip">'));
@@ -260,8 +263,6 @@ function createReply(Repuname, Repcontent, Reptime) {
         $('#replyTime').val(null);
     });
     $('#replyTime').val(Reptime);
-    console.log('time sent to reply func: ' + Reptime);
-
 }
 
 function convertTimestamp(timestamp) {

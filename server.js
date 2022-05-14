@@ -87,6 +87,7 @@ server.on('error', (e) => {
 });
 
 ////////////////////////////////////////////////////////////////////////* Socket server code
+var synctimer = null;
 const wss = new WebSocket.Server({ noServer: true });
 server.on('upgrade', function (request, socket, head) {
     wss.handleUpgrade(request, socket, head, function (ws) {
@@ -181,12 +182,16 @@ wss.on('connection', ws => {
                     } else {
                         resp.content = 'chatresp';
                         ws.send(JSON.stringify(resp));
+                        ws.lasttime = Math.floor(Date.now() / 1000) + 10;
                     }
                 }
             });
         }
         else if (jData['action'] == 'getchat') {
             console.log('Recieved request from ' + ws.id + ' to get chats');
+            ws.currart = jData['article'];
+            ws.lasttime = Math.floor(Date.now() / 1000);
+            console.log('time in getchats: ' + ws.lasttime);
             APIgetChat(jData['article'], (err, resp) => {
                 if (err) {
                     console.log('Get chat ' + err);
@@ -217,12 +222,48 @@ wss.on('connection', ws => {
                     }
                 }
             });
+            if (synctimer === null)
+                synctimer = setInterval(() => sync(), 5000);
+        }
+
+        function sync() {
+            console.log('Syncing. . .');
+            for (let c of clients) {
+                if (c.currart != null && c.lasttime != null) {
+                    APIsyncMessages(c.currart, c.lasttime, (err, resp) => {
+                        if (c.lasttime < Math.floor(Date.now() / 1000))
+                            c.lasttime = Math.floor(Date.now() / 1000);
+                        if (err) {
+                            console.log('Sync chat ' + err);
+                        }
+                        else {
+                            if (resp == null) {
+                                console.log('Sync for ' + c.id + ' is null');
+                            } else if (resp == false) {
+                                console.log('Sync for ' + c.id + ' is false');
+                            } else if (resp['data']['SyncStatus'] == 'outofdate') {
+                                resp.content = 'newMessages';
+                                const jsonReq = {
+                                    content: 'newMessages',
+                                    data: resp['data']['NewMess']
+                                };
+
+                                c.send(JSON.stringify(jsonReq));
+                            }
+                        }
+                    });
+                }
+            }
         }
     });
 
     ws.on('close', function incoming(data) {
         console.log(ws.id + ' has disconnected');
         clients.delete(ws);
+        if (clients.size === 0 && synctimer != null) {
+            clearInterval(synctimer);
+            synctimer = null;
+        }
     });
 
 
@@ -257,6 +298,39 @@ function APIGetArticles(cb) {
             cb(false);
         }
         console.log('getArticle status: ' + body['status']);
+        cb(null, body);
+    });
+}
+
+function APIsyncMessages(article, time, cb) {
+    const jsonreq = {
+        type: 'chat',
+        key: process.env.SERVERKEY,
+        op: 'sync',
+        url: article,
+        timestamp: time,
+        return: [''],
+    };
+    const options = {
+        url: process.env.WURL,
+        json: true,
+        body: jsonreq,
+        auth: {
+            user: process.env.WUSERNAME,
+            pass: process.env.WPASSWORD,
+            sendImmediately: false
+        }
+    };
+
+    request.post(options, (err, resp, body) => {
+        if (err) {
+            console.log(err);
+            cb(false);
+        }
+        if (body['status'] != 'success') {
+            console.log('Sync Failed');
+            cb(false);
+        }
         cb(null, body);
     });
 }
@@ -348,9 +422,6 @@ process.stdin.addListener('data', data => {
         commandKill(strdata);
     else {
         console.log('Unrecognised command');
-        // APIGetArticles();
-        // APIaddChat('user1', 278, 'this is an article', null);
-        // APIgetChat(123);
     }
 });
 
