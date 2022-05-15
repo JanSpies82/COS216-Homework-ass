@@ -227,7 +227,6 @@ wss.on('connection', ws => {
         }
 
         function sync() {
-            console.log('Syncing. . .');
             for (let c of clients) {
                 if (c.currart != null && c.lasttime != null) {
                     APIsyncMessages(c.currart, c.lasttime, (err, resp) => {
@@ -441,8 +440,11 @@ function commandKill(c) {
     var id = c.replace('KILL ', '').trim();
     for (let c of clients) {
         if (c.id === id) {
-            c.send('You are being disconnected');
-            c.close();
+            const mess = {
+                content: 'Connection',
+                action: 'KILL'
+            };
+            c.close(1000, 'Connection has been closed');
             clients.delete(c);
             return;
         }
@@ -451,8 +453,7 @@ function commandKill(c) {
 }
 function commandQuit() {
     for (let c of clients) {
-        c.send('This server will be going offline now and thus you will be disconnected');
-        c.close();
+        c.close(1001, 'Server is shutting down');
         clients.delete(c);
     }
     console.log('All users have been disconnected and server will now go offline');

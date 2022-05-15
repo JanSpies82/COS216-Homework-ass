@@ -55,11 +55,18 @@ const PORT = 8321;
 var socket;
 function setMainWindow() {
     $(document).attr('title', 'News4You Chatpage');
-    reconnect();
+    try {
+        socket.close();
+    } catch (e) { }
+
+    socket = new WebSocket('ws://localhost:' + PORT);
+    socket.onopen = socOpen;
+    socket.onmessage = socMessage;
+    socket.onclose = socClose;
 }
 
 function reconnect() {
-    $('#connectionstat').text('Attempting to reconnect');
+    toastr.info('Attempting to reconnect');
     try {
         socket.close();
     } catch (e) { }
@@ -88,11 +95,13 @@ function socOpen(ev) {//* When socket is opened
 }
 
 function socMessage(ev) {//* When message is received
+    console.log(ev);
     var response = JSON.parse(ev.data);
     switch (response['content']) {
         case 'establish':
             {
                 console.log('received establish response');
+                toastr.success('Connected');
                 break;
             }
         case 'articles':
@@ -133,6 +142,16 @@ function socMessage(ev) {//* When message is received
             addMsg(response['data'][0]['user'], response['data'][0]['time'], response['data'][0]['content'], response['data'][0]['replyuser'], response['data'][0]['replycontent']);
             break;
         }
+        case 'Connection': {
+            if (response.action === 'KILL') {
+                toastr.options.onclick = reconnect();
+                toastr.error('You have been disconnected from the server. Click this message to reconnect.');
+                toastr.options.onclick = null;
+            }
+            else
+                toastr.error('The server has gone offline');
+            break;
+        }
         default:
             {
                 console.log('received unknown response: ' + response['action']);
@@ -142,14 +161,19 @@ function socMessage(ev) {//* When message is received
 }
 
 function socClose(ev) {//* When socket is closed
-    $('#data').append('Connection lost<br/><br/>');
-    $('#disconnect').attr('disabled', true);
-    $('#reconnect').attr('disabled', false);
-    $('#connectionstat').text('Disconnected');
+    if (ev.reason === 'Connection has been closed') {
+        toastr.options.onclick = reconnect;
+        toastr.error('You have been disconnected from the server. Click this message to reconnect.');
+        toastr.options.onclick = null;
+    }
+    else
+        toastr.error('The server has gone offline');
+    console.log(ev);
 }
 
 function setArticles(data) {
     $('#centered_div').remove();
+    $('#articles').remove();
     $('body').append($('<div id="articles" class="main_content">'));
 
     var author = [];
