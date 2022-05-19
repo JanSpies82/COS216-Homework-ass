@@ -14,9 +14,9 @@ const dom = new jsdom.JSDOM('');
 const $ = require('jquery')(dom.window);
 
 ////////////////////////////////////////////////////////////////////////* Main server code
-// const prompt = require("prompt-sync")({ sigint: true });
-// const PORT = prompt("Which port should the server use? ");
-const PORT = 8321;
+const prompt = require('prompt-sync')({ sigint: true });
+const PORT = prompt('Which port should the server use? ');
+// const PORT = 8321;
 
 console.log('Starting Server on ' + PORT);
 var lastuname = 'def';
@@ -182,7 +182,7 @@ wss.on('connection', ws => {
                     } else {
                         resp.content = 'chatresp';
                         ws.send(JSON.stringify(resp));
-                        ws.lasttime = Math.floor(Date.now() / 1000) + 10;
+                        ws.lasttime = resp.timestamp;
                     }
                 }
             });
@@ -191,7 +191,6 @@ wss.on('connection', ws => {
             console.log('Recieved request from ' + ws.id + ' to get chats');
             ws.currart = jData['article'];
             ws.lasttime = Math.floor(Date.now() / 1000);
-            console.log('time in getchats: ' + ws.lasttime);
             APIgetChat(jData['article'], (err, resp) => {
                 if (err) {
                     console.log('Get chat ' + err);

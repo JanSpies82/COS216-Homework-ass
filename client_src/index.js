@@ -24,9 +24,6 @@ $(document).ready(function (e) {
 
     toastr.options.closeButton = true;
 
-    //!Testing code
-    $('legend').click();
-    // $('.Form_Sub').click();
 });
 
 function login() {
@@ -51,7 +48,7 @@ function login() {
 }
 
 
-const PORT = 8321;
+const PORT = 8555;
 var socket;
 function setMainWindow() {
     $(document).attr('title', 'News4You Chatpage');
@@ -225,7 +222,7 @@ function openArt(inp) {
         e.preventDefault;
         if (!$('#reply_legend').length)
             $('#replyTime').val(null);
-        sendMessage($('#msg_input').val(), inp, $('#replyTime').val());
+        sendMessage(xssencode($('#msg_input').val()), inp, $('#replyTime').val());
     });
 
     const reqObj = {
@@ -258,14 +255,17 @@ function sendMessage(cont, art, reptime = null) {
 
 function addMsg(user, time, content, replyuser, replycontent) {
     $('#message_container').find('p').remove();
+    if ($('#' + user + time).length)
+        return;
+
     $('#message_container').append('<div id="' + user + time + '" class="Msg">');
     if (replyuser != null && replycontent != null)
-        $('#' + user + time).append($('<div class="reply">').html('Replying to: ' + replyuser + '~' + replycontent));
+        $('#' + user + time).append($('<div class="reply">').html('Replying to: ' + replyuser + '~' + xssdecode(replycontent)));
     $('#' + user + time).append($('<div class="uname">').text(user));
     $('#' + user + time).append($('<span class="tooltiptext">').html('Click on a message to reply to it'));
     $('#' + user + time).append($('<div class="timestamp">').text(convertNiceTimestamp(time)));
     $('#' + user + time).append($('<div class="unixtime">').text(time));
-    $('#' + user + time).append($('<div class="msgcontent">').text(content));
+    $('#' + user + time).append($('<div class="msgcontent">').text(xssdecode(content)));
     $('#message_container').append('<br>');
     $('#' + user + time).wrap($('<span class="tooltip">'));
     $('#message_container').scrollTop($('#message_container').height());
@@ -280,7 +280,7 @@ function addMsg(user, time, content, replyuser, replycontent) {
 function createReply(Repuname, Repcontent, Reptime) {
     $('#reply_legend').html('');
     $('#reply_legend').remove();
-    $('input:first').before($('<legend id="reply_legend">').html('<div class="close">X</div><div id="replyUname">' + Repuname + ':</div><div id="replyContent">' + Repcontent + '</div>'));
+    $('input:first').before($('<legend id="reply_legend">').html('<div class="close">X</div><div id="replyUname">' + Repuname + ':</div><div id="replyContent">' + xssdecode(Repcontent) + '</div>'));
     $('#reply_legend .close').click((e) => {
         e.preventDefault;
         $('#reply_legend').remove();
@@ -311,7 +311,11 @@ function xssencode(input) {
 }
 
 function xssdecode(input) {
-    if (input !== null)
-        return input.replace(/\\/, '');
+    if (input !== null) {
+        console.log('before decode: ' + input);
+        const dec = input.replace(/\\/g, '');
+        console.log('after decode: ' + dec);
+        return dec;
+    }
     return null;
 }
